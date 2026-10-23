@@ -12,11 +12,49 @@ def test_submit_job():
     assert submit_job("org_a", "llm", {"text": "hi"}).status == "queued"
 
 
-@pytest.mark.xfail(reason="planted sandbox bug")
 def test_idempotency_key_reuses_job():
     a = submit_job("org_a", "llm", {}, "k1")
     b = submit_job("org_a", "llm", {}, "k1")
     assert a.id == b.id
+    assert len(jobs) == 1
+
+
+def test_idempotency_key_is_scoped_to_org():
+    org_a_job = submit_job("org_a", "llm", {}, "k1")
+    org_b_job = submit_job("org_b", "llm", {}, "k1")
+
+    assert org_a_job.id != org_b_job.id
+    assert len(jobs) == 2
+
+
+def test_submissions_without_idempotency_key_create_new_jobs():
+    a = submit_job("org_a", "llm", {})
+    b = submit_job("org_a", "llm", {})
+
+    assert a.id != b.id
+    assert len(jobs) == 2
+
+
+def test_idempotency_key_rejects_different_payload():
+    submit_job("org_a", "llm", {"text": "hi"}, "k1")
+    with pytest.raises(ValueError):
+        submit_job("org_a", "llm", {"text": "bye"}, "k1")
+    assert len(jobs) == 1
+
+
+def test_idempotency_key_rejects_different_kind():
+    submit_job("org_a", "llm", {}, "k1")
+    with pytest.raises(ValueError):
+        submit_job("org_a", "email", {}, "k1")
+    assert len(jobs) == 1
+
+
+def test_empty_idempotency_key_is_not_deduped():
+    a = submit_job("org_a", "llm", {}, "")
+    b = submit_job("org_a", "llm", {}, "")
+
+    assert a.id != b.id
+    assert len(jobs) == 2
 
 
 @pytest.mark.xfail(reason="planted sandbox bug")
