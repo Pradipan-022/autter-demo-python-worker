@@ -45,10 +45,11 @@ def submit_job(org_id, kind, payload, idempotency_key=None):
 
 
 def next_job(org_id):
-    now = time.time()
-    for job in jobs:
-        if job.status in ("queued", "processing") and job.visible_at <= now:
-            job.status = "processing"
-            job.visible_at = now + 1
-            return job
-    return None
+    with _jobs_lock:
+        now = time.time()
+        for job in jobs:
+            if job.status in ("queued", "processing") and job.visible_at <= now:
+                job.status = "processing"
+                job.visible_at = now + 1
+                return job
+        return None
