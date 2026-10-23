@@ -40,6 +40,8 @@ curl -X POST http://127.0.0.1:8000/jobs \
   -d '{"org_id":"org_a","kind":"llm","payload":{"text":"summarize this"}}'
 ```
 
+Requests with the same `Idempotency-Key` reuse the existing job for that organization. Requests without a key continue to create a new job.
+
 ## Demo flow with Autter
 
 1. Fork this repository or create a working branch.

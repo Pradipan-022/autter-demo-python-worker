@@ -1,3 +1,4 @@
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -17,18 +18,28 @@ class Job:
 
 
 jobs: list[Job] = []
+_jobs_lock = threading.Lock()
 
 
 def submit_job(org_id, kind, payload, idempotency_key=None):
-    job = Job(
-        id=str(uuid.uuid4()),
-        org_id=org_id,
-        kind=kind,
-        payload=payload,
-        idempotency_key=idempotency_key,
-    )
-    jobs.append(job)
-    return job
+    with _jobs_lock:
+        if idempotency_key is not None:
+            for job in jobs:
+                if (
+                    job.org_id == org_id
+                    and job.idempotency_key == idempotency_key
+                ):
+                    return job
+
+        job = Job(
+            id=str(uuid.uuid4()),
+            org_id=org_id,
+            kind=kind,
+            payload=payload,
+            idempotency_key=idempotency_key,
+        )
+        jobs.append(job)
+        return job
 
 
 def next_job(org_id):
