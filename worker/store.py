@@ -23,13 +23,15 @@ _jobs_lock = threading.Lock()
 
 def submit_job(org_id, kind, payload, idempotency_key=None):
     with _jobs_lock:
-        if idempotency_key is not None:
+        if idempotency_key:
             for job in jobs:
-                if (
-                    job.org_id == org_id
-                    and job.idempotency_key == idempotency_key
-                ):
-                    return job
+                if job.org_id != org_id or job.idempotency_key != idempotency_key:
+                    continue
+                if job.kind != kind or job.payload != payload:
+                    raise ValueError(
+                        "idempotency key already used with different parameters"
+                    )
+                return job
 
         job = Job(
             id=str(uuid.uuid4()),
