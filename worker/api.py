@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 from .store import jobs, submit_job
@@ -15,7 +15,10 @@ class JobIn(BaseModel):
 
 @app.post("/jobs")
 def create_job(body: JobIn, idempotency_key: str | None = Header(default=None)):
-    return submit_job(body.org_id, body.kind, body.payload, idempotency_key).__dict__
+    try:
+        return submit_job(body.org_id, body.kind, body.payload, idempotency_key).__dict__
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/jobs/{job_id}")
